@@ -1,3 +1,4 @@
+import os
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -9,7 +10,6 @@ st.set_page_config(page_title="Dashboard IoT AI", page_icon="🌡️", layout="w
 # ==========================================
 # KONFIGURASI API GROQ
 # ==========================================
-# API Key milikmu sudah dimasukkan dengan benar menggunakan tanda kutip
 GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
 
 def get_llm_comment(suhu, kelembaban, timestamp, prediksi):
@@ -31,7 +31,6 @@ def get_llm_comment(suhu, kelembaban, timestamp, prediksi):
     """
     
     payload = {
-        # Menggunakan Llama 3.1 untuk menghindari error 400 Bad Request
         "model": "llama-3.1-8b-instant", 
         "messages": [
             {"role": "system", "content": "Anda adalah analis lingkungan."},
@@ -46,20 +45,25 @@ def get_llm_comment(suhu, kelembaban, timestamp, prediksi):
         response.raise_for_status() 
         return response.json()["choices"][0]["message"]["content"]
     except requests.exceptions.HTTPError as e:
-        # Menangkap error spesifik dari Groq jika format masih ditolak
         return f"🚨 Error dari server Groq: {e.response.text}"
     except Exception as e:
         return f"🚨 Gagal terhubung ke API Groq: {e}"
 
 # ==========================================
-# MEMUAT DATA
+# MEMUAT DATA (Dinamis Path dengan os)
 # ==========================================
 @st.cache_data
 def load_data():
-    df_historis = pd.read_csv('sensor_data.csv', parse_dates=['timestamp'], index_col='timestamp')
-    df_prediksi = pd.read_csv('hasil_prediksi_lstm.csv', parse_dates=['Unnamed: 0'])
+    current_dir = os.path.dirname(__file__)
+    
+    path_historis = os.path.join(current_dir, 'sensor_data.csv')
+    path_prediksi = os.path.join(current_dir, 'hasil_prediksi_lstm.csv')
+    
+    df_historis = pd.read_csv(path_historis, parse_dates=['timestamp'], index_col='timestamp')
+    df_prediksi = pd.read_csv(path_prediksi, parse_dates=['Unnamed: 0'])
     df_prediksi.rename(columns={'Unnamed: 0': 'timestamp'}, inplace=True)
     df_prediksi.set_index('timestamp', inplace=True)
+    
     return df_historis, df_prediksi
 
 df_historis, df_prediksi = load_data()
